@@ -1,0 +1,50 @@
+# Starter pipelines
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+pool:
+  name: AzureBI-Agent
+
+steps:
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      $cid = (git log -n1 --pretty=format:"%h" --follow Power-BI)
+      $dir = (git diff-tree --no-commit-id --name-only -r $cid)
+      $Type =$dir.GetType()
+      if($Type.Name -eq "String")
+        {
+            $Sample = $dir
+            $Save = "$Sample" -split "/"
+            $filename = ($Save[$Save.length-1])
+            $Workspacename = ($Save[$Save.length-2])
+            $filename
+            $Workspacename
+            $parentdir = "Power-BI"
+            Copy-Item $parentdir/$Workspacename/$filename -Destination "$(Build.ArtifactStagingDirectory)"
+        }
+      else
+        {
+            $len = $dir.length
+            for($i=0; $i -le $len-1; $i++)
+            {
+                $Sample = $dir[$i]
+                $Save = "$Sample" -split "/"
+                $filename = ($Save[$Save.length-1])
+                $Workspacename = ($Save[$Save.length-2])
+                $filename
+                $Workspacename
+                $parentdir = "Power-BI"
+                Copy-Item $parentdir/$Workspacename/$filename -Destination "$(Build.ArtifactStagingDirectory)"
+            }
+        }
+          Write-Host "##vso[task.setvariable variable=Workspacename;]$Workspacename"
+- task: PublishBuildArtifacts@1
+  displayName: "Pulish Latest Report"
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: $(Workspacename)
+    publishLocation: 'Container'
